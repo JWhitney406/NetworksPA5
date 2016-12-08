@@ -42,9 +42,7 @@ class Interface:
     # @param block - if True, block until room in queue, if False may throw queue.Full exception
     def put(self, pkt, in_or_out, block=False):
 
-### TODO: Determine Priority
-        
-        priority = 1;
+        priority = int(NetworkPacket.from_byte_S(pkt).priority)
         if in_or_out == 'out':
 #             print('putting packet in the OUT queue')
             self.out_queue.put((-priority, pkt), block)
