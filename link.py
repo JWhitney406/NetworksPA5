@@ -7,6 +7,7 @@ Created on Oct 12, 2016
 import queue
 import threading
 import time
+import network
 
 ## An abstraction of a link between router interfaces
 class Link:
@@ -43,11 +44,23 @@ class Link:
                     intf_b.put(pkt_S, 'in')
                     #update the next free time of the inteface according to serialization delay
                     pkt_size = len(pkt_S)*8 #assuming each characted is 8 bits
-                    intf_a.next_avail_time = time.time() + pkt_size/intf_a.capacity                
+                    intf_a.next_avail_time = time.time() + pkt_size/intf_a.capacity
+
+                    num_high_pkt = 0
+                    num_low_pkt = 0
+                    
+                    for p, pkt in intf_a.out_queue.queue:
+                        #priority = network.NetworkPacket.from_byte_S(pkt)[2]
+                        if p == -1:
+                            num_high_pkt += 1
+                        elif p == 0:
+                            num_low_pkt += 1
+                    
+                    
                     print('%s: transmitting packet "%s" on %s %s -> %s, %s \n' \
                           ' - seconds until the next available time %f\n' \
-                          ' - queue size %d\n' \
-                          % (self, pkt_S, node_a, node_a_intf, node_b, node_b_intf, intf_a.next_avail_time - time.time(), intf_a.out_queue.qsize()))
+                          ' - queue size %d: priority 0: %d packets, priority 1: %d packets\n' \
+                          % (self, pkt_S, node_a, node_a_intf, node_b, node_b_intf, intf_a.next_avail_time - time.time(), intf_a.out_queue.qsize(), num_low_pkt, num_high_pkt))
                 # uncomment the lines below to see waiting time until next transmission
 #                 else:
 #                     print('%s: waiting to transmit packet on %s %s -> %s, %s for another %f milliseconds' % (self, node_a, node_a_intf, node_b, node_b_intf, intf_a.next_avail_time - time.time()))    
