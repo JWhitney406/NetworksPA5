@@ -103,8 +103,40 @@ class NetworkPacket:
         data_S = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + 1: ]        
         return self(dst_addr, prot_S, priority, data_S)
     
+class MPLS_frame:
+    label_length = 5
 
+    def __init__(self, pkt):
+        self.pkt = pkt
+
+    def to_byte_S(self):
+        byte_S = str(self.dst_addr).zfill(self.dst_addr_S_length)
+        if self.prot_S == 'data':
+            byte_S += '1'
+        elif self.prot_S == 'control':
+            byte_S += '2'
+        else:
+            raise('%s: unknown prot_S option: %s' %(self, self.prot_S))
+        byte_S += str(self.priority)
+        byte_S += self.data_S
+        return byte_S
     
+    ## extract a packet object from a byte string
+    # @param byte_S: byte string representation of the packet
+    @classmethod
+    def from_byte_S(self, byte_S):
+        print(byte_S[0 : NetworkPacket.dst_addr_S_length])
+        dst_addr = int(byte_S[0 : NetworkPacket.dst_addr_S_length])
+        prot_S = byte_S[NetworkPacket.dst_addr_S_length : NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length]
+        if prot_S == '1':
+            prot_S = 'data'
+        elif prot_S == '2':
+            prot_S = 'control'
+        else:
+            raise('%s: unknown prot_S field: %s' %(self, prot_S))
+        priority = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length:NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + 1]
+        data_S = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + 1: ]        
+        return self(dst_addr, prot_S, priority, data_S)
 
 ## Implements a network host for receiving and transmitting data
 class Host:
