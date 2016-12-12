@@ -20,7 +20,7 @@ if __name__ == '__main__':
     client1 = network.Host(1)
     object_L.append(client1)
     client2 = network.Host(2)
-    object_L.append(client2
+    object_L.append(client2)
     server = network.Host(3)
     object_L.append(server)
     
@@ -29,8 +29,8 @@ if __name__ == '__main__':
 
     router_a = network.Router(name='A',
                               intf_cost_L=[1,1,1,1],
-                              intf_capacity_L=[500,500],
-                              rt_tbl_D = {1: {0: 1}, 2: {1: 1}},
+                              intf_capacity_L=[500,500,500,500],
+                              rt_tbl_D = {1: {0: 1}, 2: {1: 1}, 3: {2: 1}},
                               max_queue_size=router_queue_size)
     object_L.append(router_a)
     
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     router_d = network.Router(name='D',
                               intf_cost_L=[1,1,1],
-                              intf_capacity_L=[500,500],
+                              intf_capacity_L=[500,500,500],
                               rt_tbl_D = {3: {2: 1}},
                               max_queue_size=router_queue_size)
     object_L.append(router_d)
@@ -80,7 +80,8 @@ if __name__ == '__main__':
     for i in range(5):
         priority = i%2
         print(priority)
-        client.udt_send(2, 'Sample client data %d' % i, priority)
+        client1.udt_send(3, 'Sample client%d data %d' % (1,i), priority)
+       # client2.udt_send(3, 'Sample client%d data %d' % (2,i), priority)
         
     #give the network sufficient time to transfer all packets before quitting
     sleep(simulation_time)
