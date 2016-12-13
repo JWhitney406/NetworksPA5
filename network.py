@@ -41,8 +41,12 @@ class Interface:
     # @param in_or_out - use 'in' or 'out' interface
     # @param block - if True, block until room in queue, if False may throw queue.Full exception
     def put(self, pkt, in_or_out, block=False):
-
-        priority = int(NetworkPacket.from_byte_S(pkt).priority)
+        header_length = NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + 1
+        try:
+            pot_prot = int(pkt[header_length : header_length+1])
+            priority = int(NetworkPacket.from_byte_S(pkt[MPLS_frame.label_length:]).priority)
+        except: 
+            priority = int(NetworkPacket.from_byte_S(pkt).priority)
         if in_or_out == 'out':
             self.out_queue.put((-priority, pkt), block)
         else:
@@ -88,7 +92,6 @@ class NetworkPacket:
     # @param byte_S: byte string representation of the packet
     @classmethod
     def from_byte_S(self, byte_S):
-        print(byte_S[0 : NetworkPacket.dst_addr_S_length])
         dst_addr = int(byte_S[0 : NetworkPacket.dst_addr_S_length])
         prot_S = byte_S[NetworkPacket.dst_addr_S_length : NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length]
         if prot_S == '1':
@@ -96,7 +99,7 @@ class NetworkPacket:
         elif prot_S == '2':
             prot_S = 'control'
         else:
-            raise('%s: unknown prot_S field: %s' %(self, prot_S))
+            print('%s: unknown prot_S field: %s' %(self, prot_S))
         priority = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length:NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + 1]
         data_S = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + 1: ]        
         return self(dst_addr, prot_S, priority, data_S)
@@ -110,15 +113,15 @@ class MPLS_frame:
 
     def encapsulate(self):
         byte_S = str(self.lbl).zfill(self.label_length)
-        byte_S += pkt.to_byte_S(pkt)
+        byte_S += self.pkt_S
         return byte_S
     
     ## extract a packet from an MPLS frame in the form of a byte string
     # @param byte_S: byte string representation of the packet encased in MPLS frame
     @classmethod
     def decapsulate(self, byte_S):
-        lbl = int(byte_S[ : label_length])
-        return self(lbl, byte_S[label_length : len(byte_S)])
+        lbl = int(byte_S[ : self.label_length])
+        return self(lbl, byte_S[self.label_length : len(byte_S)])
         
 ## Implements a network host for receiving and transmitting data
 class Host:
@@ -139,13 +142,16 @@ class Host:
     # @param priority: packet priority
     def udt_send(self, dst_addr, data_S, priority=0):
         p = NetworkPacket(dst_addr, 'data', priority, data_S)
+        pkt_S = p.to_byte_S()
+        mpls = MPLS_frame(0, pkt_S)
         print('%s: sending packet "%s"' % (self, p))
-        self.intf_L[0].put(p.to_byte_S(), 'out') #send packets always enqueued successfully
+        self.intf_L[0].put(mpls.encapsulate(), 'out') #send packets always enqueued successfully
         
-    ## receive packet from the network layer
+    ## receive packet from the network laye
     def udt_receive(self):
         pkt_S = self.intf_L[0].get('in')
         if pkt_S is not None:
+            # l, pkt = MPLS_frame.decapsulate(pkt_S)
             print('%s: received packet "%s"' % (self, pkt_S))
        
     ## thread target for the host to keep receiving data
@@ -199,7 +205,7 @@ class Router:
             pkt_S = self.intf_L[i].get('in')
             #if packet exists make a forwarding decision
             if pkt_S is not None:
-                mpls = MPLS_Packet.decapsulate(pkt_S)  #parse a packet out
+                mpls = MPLS_frame.decapsulate(pkt_S)  #parse a packet out
                 l = mpls.lbl
                 p = NetworkPacket.from_byte_S(mpls.pkt_S)
                 if p.prot_S == 'data':
@@ -214,10 +220,17 @@ class Router:
     #  @param i Incoming interface number for packet p
     def forward_packet(self, l, p, i):
         try:
-            
-            print('%s: forwarding packet "%s" from interface %d to %d' % (self, p, i, intf))
-            self.intf_L[intf].put(p.to_byte_S(), 'out', True)
-            print('%s: forwarding packet "%s" from interface %d to %d' % (self, p, i, intf))
+            l2, intf = self.mpls_rt_tbl.get((l,i))
+            pkt = p.to_byte_S()
+            mpls = MPLS_frame(l2, pkt)
+            if not((self.name == 'D' and intf == 2) or 
+                   (self.name == 'A' and (intf == 0 or intf == 1))):
+                pkt_S = mpls.encapsulate()
+                self.intf_L[intf].put(pkt_S, 'out', True)
+                print('%s: forwarding packet "%s" from interface %d to %d' % (self, pkt_S, i, intf))
+            else:
+                self.intf_L[intf].put(pkt, 'out', True)
+                print('%s: forwarding packet "%s" from interface %d to %d' % (self, pkt, i, intf))
         except queue.Full:
             print('%s: packet "%s" lost on interface %d' % (self, p, i))
             pass
@@ -241,14 +254,15 @@ class Router:
         except queue.Full:
             print('%s: packet "%s" lost on interface %d' % (self, p, i))
             pass
-        
+   
+    """    
     ## Print routing table
     def print_routes(self):
         print('%s: routing table' % self)
         #TODO: print the routes as a two dimensional table for easy inspection
         # Currently the function just prints the route table as a dictionary
         print(self.rt_tbl_D)
-        
+    """ 
                 
     ## thread target for the host to keep forwarding data
     def run(self):

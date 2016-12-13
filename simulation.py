@@ -11,7 +11,7 @@ import sys
 
 ##configuration parameters
 router_queue_size = 0 #0 means unlimited
-simulation_time = 10 #give the network sufficient time to transfer all packets before quitting
+simulation_time = 12 #give the network sufficient time to transfer all packets before quitting
 
 if __name__ == '__main__':
     object_L = [] #keeps track of objects, so we can kill their threads
@@ -31,7 +31,7 @@ if __name__ == '__main__':
                               intf_cost_L=[1,1,1,1],
                               intf_capacity_L=[500,500,500,500],
                               rt_tbl_D = {1: {0: 1}, 2: {1: 1}, 3: {2: 3}},
-                              mpls_rt_tbl = {{0:0}: {1:2}, {0: 1}: {2:3}, {1: 2}: {0: 0}, {2: 3}, {0: 1}}, 
+                              mpls_rt_tbl = {(0,0): (1,2), (0, 1): (2,3), (1, 2): (0, 0), (2, 3): (0, 1)}, 
                               max_queue_size=router_queue_size)
     object_L.append(router_a)
     
@@ -39,7 +39,7 @@ if __name__ == '__main__':
                               intf_cost_L=[1,1],
                               intf_capacity_L=[500,500],
                               rt_tbl_D = {},
-                              mpls_rt_tbl = {{1: 0}: {1: 1}, {1: 1}: {1: 0}},
+                              mpls_rt_tbl = {(1, 0): (1, 1), (1, 1): (1, 0)},
                               max_queue_size=router_queue_size)
     object_L.append(router_b)
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
                               intf_cost_L=[1,1],
                               intf_capacity_L=[500,500],
                               rt_tbl_D = {},
-                              mpls_rt_tbl = {{2: 0}: {2:1}, {2:1}: {2: 0}},
+                              mpls_rt_tbl = {(2, 0): (2,1), (2,1): (2, 0)},
                               max_queue_size=router_queue_size)
     object_L.append(router_c)
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
                               intf_cost_L=[1,1,1],
                               intf_capacity_L=[500,500,500],
                               rt_tbl_D = {3: {2: 1}},
-                              mpls_rt_tbl = {{1: 0}: {0: 2}, {2: 1}: {0: 2}, {0, 2}: {None: None}},
+                              mpls_rt_tbl = {(1, 0): (0, 2), (2, 1): (0, 2), (0, 2): (None, None)},
                               max_queue_size=router_queue_size)
     object_L.append(router_d)
     
@@ -83,18 +83,19 @@ if __name__ == '__main__':
     #create some send events    
     for i in range(5):
         priority = i%2
-        print(priority)
         client1.udt_send(3, 'Sample client%d data %d' % (1,i), priority)
-       # client2.udt_send(3, 'Sample client%d data %d' % (2,i), priority)
+        client2.udt_send(3, 'Sample client%d data %d' % (2,i), priority)
         
     #give the network sufficient time to transfer all packets before quitting
     sleep(simulation_time)
     
+    """
     #print the final routing tables
     for obj in object_L:
         if str(type(obj)) == "<class 'network.Router'>":
             obj.print_routes()
-    
+    """   
+ 
     #join all threads
     for o in object_L:
         o.stop = True
