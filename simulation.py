@@ -30,7 +30,8 @@ if __name__ == '__main__':
     router_a = network.Router(name='A',
                               intf_cost_L=[1,1,1,1],
                               intf_capacity_L=[500,500,500,500],
-                              rt_tbl_D = {1: {0: 1}, 2: {1: 1}, 3: {2: 1}},
+                              rt_tbl_D = {1: {0: 1}, 2: {1: 1}, 3: {2: 3}},
+                              mpls_rt_tbl = {{0:0}: {1:2}, {0: 1}: {2:3}, {1: 2}: {0: 0}, {2: 3}, {0: 1}}, 
                               max_queue_size=router_queue_size)
     object_L.append(router_a)
     
@@ -38,6 +39,7 @@ if __name__ == '__main__':
                               intf_cost_L=[1,1],
                               intf_capacity_L=[500,500],
                               rt_tbl_D = {},
+                              mpls_rt_tbl = {{1: 0}: {1: 1}, {1: 1}: {1: 0}},
                               max_queue_size=router_queue_size)
     object_L.append(router_b)
 
@@ -45,6 +47,7 @@ if __name__ == '__main__':
                               intf_cost_L=[1,1],
                               intf_capacity_L=[500,500],
                               rt_tbl_D = {},
+                              mpls_rt_tbl = {{2: 0}: {2:1}, {2:1}: {2: 0}},
                               max_queue_size=router_queue_size)
     object_L.append(router_c)
 
@@ -52,6 +55,7 @@ if __name__ == '__main__':
                               intf_cost_L=[1,1,1],
                               intf_capacity_L=[500,500,500],
                               rt_tbl_D = {3: {2: 1}},
+                              mpls_rt_tbl = {{1: 0}: {0: 2}, {2: 1}: {0: 2}, {0, 2}: {None: None}},
                               max_queue_size=router_queue_size)
     object_L.append(router_d)
     
