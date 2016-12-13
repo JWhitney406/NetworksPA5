@@ -167,9 +167,13 @@ class Router:
     ##@param name: friendly router name for debugging
     # @param intf_cost_L: outgoing cost of interfaces (and interface number)
     # @param intf_capacity_L: capacities of outgoing interfaces in bps 
-    # @param rt_tbl_D: routing table dictionary (starting reachability), eg. {1: {1: 1}} # packet to host 1 through interface 1 for cost 1
+    # @param rt_tbl_D: routing table dictionary (starting reachability), eg. {1: {1: 1}} 
+    #                packet to host 1 through interface 1 for cost 1
+    # @param mpls_rt_tbl: mpls routing table for label based forwarding eg. {{1, 1}: {1: 1}} 
+    #                packet with label 1 through interface 1 should be sent with a label 1 out interface 1 
     # @param max_queue_size: max queue length (passed to Interface)
-    def __init__(self, name, intf_cost_L, intf_capacity_L, rt_tbl_D, max_queue_size):
+
+    def __init__(self, name, intf_cost_L, intf_capacity_L, rt_tbl_D, mpls_rt_tbl, max_queue_size):
         self.stop = False #for thread termination
         self.name = name
         #create a list of interfaces
@@ -179,7 +183,8 @@ class Router:
         for i in range(len(intf_cost_L)):
             self.intf_L.append(Interface(intf_cost_L[i], max_queue_size, intf_capacity_L[i]))
         #set up the routing table for connected hosts
-        self.rt_tbl_D = rt_tbl_D 
+        self.rt_tbl_D = rt_tbl_D
+        self.mpls_rt_tbl = mpls_rt_tbl
 
     ## called when printing the object
     def __str__(self):
@@ -194,10 +199,11 @@ class Router:
             pkt_S = self.intf_L[i].get('in')
             #if packet exists make a forwarding decision
             if pkt_S is not None:
-                mpls = 
-                p = NetworkPacket.from_byte_S(pkt_S) #parse a packet out
+                mpls = MPLS_Packet.decapsulate(pkt_S)  #parse a packet out
+                l = mpls.lbl
+                p = NetworkPacket.from_byte_S(mpls.pkt_S)
                 if p.prot_S == 'data':
-                    self.forward_packet(p,i)
+                    self.forward_packet(l,p,i)
                 elif p.prot_S == 'control':
                     self.update_routes(p, i)
                 else:
@@ -206,10 +212,9 @@ class Router:
     ## forward the packet according to the routing table
     #  @param p Packet to forward
     #  @param i Incoming interface number for packet p
-    def forward_packet(self, p, i):
+    def forward_packet(self, l, p, i):
         try:
-            mpls = MPLS_Packet.decapsulate(p)
-            intf = min(len(self.intf_L),mpls.lbl+1)
+            
             print('%s: forwarding packet "%s" from interface %d to %d' % (self, p, i, intf))
             self.intf_L[intf].put(p.to_byte_S(), 'out', True)
             print('%s: forwarding packet "%s" from interface %d to %d' % (self, p, i, intf))
